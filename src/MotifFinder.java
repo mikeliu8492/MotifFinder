@@ -64,7 +64,7 @@ public class MotifFinder
 		
 		for(int i = 0; i < listSize; i++)
 		{
-			print_line.println(">Sequence"+i);
+			print_line.println(">Sequence "+i);
 			int trueIdx = bestMotifLocations.get(i) + 1;
 			print_line.println(trueIdx);
 			print_line.println();
