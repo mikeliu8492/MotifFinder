@@ -1,7 +1,8 @@
 import java.util.*;
 import java.io.*;
 
-public class MotifFinder 
+
+public class MotifFinder
 {
 
 	/**
@@ -13,8 +14,9 @@ public class MotifFinder
 	static String SEQUENCE_FILE = "sequences.fa";
 	static String LENGTH_FILE = "motiflength.txt";
 	
-	//list of motif start locations 0-indexed
-	static ArrayList<Integer> motifLocations = new ArrayList<Integer>();
+	//list of best motif start locations, 0-indexed
+	static ArrayList<Integer> bestMotifLocations = new ArrayList<Integer>();
+	
 	
 	//list of DNA sequences of length 500
 	static ArrayList<String> sequenceList = new ArrayList<String>();
@@ -46,110 +48,7 @@ public class MotifFinder
 	
 	
 	
-	/**
-	 * 
-	 * Score the PWN for the first two sequences.
-	 * 
-	 * @param first		substring from the first DNA sequence
-	 * @param second	substring from the second DNA sequence
-	 * 
-	 * We assume a background rate of all 0.25, since all bases as just as likely to appear. 
-	 * 
-	 * @return
-	 */
-	static double scorePWN(String first, String second)
-	{
-		double pwn = 0;
-		
-		int localChart [][] = new int[4][MOTIF_LENGTH];
-		
-		for (int i = 0; i < first.length(); i++)
-		{
-			if (first.charAt(i) == 'A')
-				++localChart[0][i];
-			else if (first.charAt(i) == 'C')
-				++localChart[1][i];
-			else if (first.charAt(i) == 'G')
-				++localChart[2][i];
-			else
-				++localChart[3][i];
-			
-			if (second.charAt(i) == 'A')
-				++localChart[0][i];
-			else if (second.charAt(i) == 'C')
-				++localChart[1][i];
-			else if (second.charAt(i) == 'G')
-				++localChart[2][i];
-			else
-				++localChart[3][i];
-			
-		}
-		
-		for (int i = 0; i < MOTIF_LENGTH; i++)
-		{
-			double local_sum = 0;
-			for (int m = 0; m < 4; m++)
-			{
-				double p = (double)(localChart[m][i])/4;
-				if (p != 0)
-				{
-					double result = p;
-					double division = Math.log(p/0.25)/Math.log(2);
-					result *= division;
-					local_sum += result;
-				}
-			}
-			
-			pwn += local_sum;
-			
-		}
-		
-		
-		return pwn;
-	}
 	
-	
-	
-	/**
-	 * Scoring function for all the others
-	 * @param target
-	 * @return
-	 */
-	static double scoreAllOthers()
-	{
-		int width = MOTIF_LENGTH;
-		int rows = 4; 
-		int matrix[][] = new int[rows][width];
-		
-		for (int m = 0; m < motifLocations.size(); m++)
-		{
-			int start = motifLocations.get(m);
-			String currentMotif = sequenceList.get(m).substring(start, start+MOTIF_LENGTH);
-			
-			for(int i = 0; i < width; i++)
-			{
-				if(currentMotif.charAt(i) == 'A')
-					matrix[0][i]++; 
-				else if(currentMotif.charAt(i) == 'C')
-					matrix[1][i]++; 
-				else if(currentMotif.charAt(i) == 'G')
-					matrix[2][i]++; 
-				else
-					matrix[3][i]++; 
-			}
-		}
-
-		
-		double final_score = 0;
-		for (int i = 0; i < width; i++)
-		{
-			final_score += Math.max(Math.max(matrix[0][i], matrix[1][i]) , Math.max(matrix[2][i], matrix[3][i])); 
-		}
-		
-		
-		return final_score; 
-		
-	}
 	
 	
 	/**
@@ -158,7 +57,7 @@ public class MotifFinder
 	 */
 	public static void writeOutSites() throws IOException
 	{
-		int listSize = motifLocations.size();
+		int listSize = bestMotifLocations.size();
 		
 		FileWriter write = new FileWriter("predictedsites.txt", false);
 		PrintWriter print_line = new PrintWriter(write);
@@ -166,7 +65,7 @@ public class MotifFinder
 		for(int i = 0; i < listSize; i++)
 		{
 			print_line.println(">Sequence"+i);
-			int trueIdx = motifLocations.get(i) + 1;
+			int trueIdx = bestMotifLocations.get(i) + 1;
 			print_line.println(trueIdx);
 			print_line.println();
 		}
@@ -182,38 +81,38 @@ public class MotifFinder
 	 */
 	public static void writeOutMotif() throws IOException
 	{
-		int listSize = motifLocations.size();
+		int listSize = bestMotifLocations.size();
 		
 		FileWriter write = new FileWriter("predictedmotifs.txt", false);
 		PrintWriter print_line = new PrintWriter(write);
 		
-		int width = MOTIF_LENGTH;
-		int length = 4; 
-		int matrix[][] = new int[length][width];
+		int rows = MOTIF_LENGTH;
+		int col = 4; 
+		int matrix[][] = new int[rows][4];
 		
 		for (int m = 0; m < listSize; m++)
 		{
-			int start = motifLocations.get(m);
+			int start = bestMotifLocations.get(m);
 			String currentMotif = sequenceList.get(m).substring(start, start+MOTIF_LENGTH);
 			
-			for(int i = 0; i < width; i++)
+			for(int i = 0; i < rows; i++)
 			{
 				if(currentMotif.charAt(i) == 'A')
-					matrix[0][i] += 1; 
+					matrix[i][0] += 1; 
 				else if(currentMotif.charAt(i) == 'C')
-					matrix[1][i] += 1; 
+					matrix[i][1] += 1; 
 				else if(currentMotif.charAt(i) == 'G')
-					matrix[2][i] += 1; 
+					matrix[i][2] += 1; 
 				else
-					matrix[3][i] += 1; 
+					matrix[i][3] += 1; 
 			}
 		}
 		
 		print_line.println(">MOTIF1 " + MOTIF_LENGTH);
 		
-		for(int i = 0; i < width; i++)
+		for(int i = 0; i < rows; i++)
 		{
-			print_line.printf("%d\t%d\t%d\t%d\n", matrix[0][i], matrix[1][i], matrix[2][i], matrix[3][i]);
+			print_line.printf("%d\t%d\t%d\t%d\n", matrix[i][0], matrix[i][1], matrix[i][2], matrix[i][3]);
 		}
 		
 		
@@ -224,6 +123,12 @@ public class MotifFinder
 	}
 	
 	
+
+	/**
+	 * Takes the motif-length file and parses out the motif-length
+	 * 
+	 * @throws IOException
+	 */
 	public static void importLengthFromFile(String file) throws IOException
 	{
 		int idx = 0;
@@ -235,93 +140,158 @@ public class MotifFinder
 		
 		MOTIF_LENGTH = Integer.parseInt(line);
 	}
-	
-	public static void main(String[] args) throws IOException
+
+	/**
+	 * This takes the minimum-hamming distance between all motifs in a given ArrayList.
+	 * It looks at each position of motifs and calculates the most common base (e.g. A, C, G, T).
+	 * Any base that deviates from that most common base ina given positionwill be added to the 
+	 * overall hamming-distances core.  The larger the score, the less consensus there is between sequences.
+	 * 
+	 * 
+	 * 
+	 * @paramArray  this represents the array of motif start indices
+	 *
+	 * @return 	int representing the minimum Hamming distance score
+	 */
+	public static int getHammingScore(ArrayList<Integer> paramArray)
 	{
-		formSequenceList(SEQUENCE_FILE);
-		importLengthFromFile(LENGTH_FILE);
 		
-		String first = sequenceList.get(0);
-		String second = sequenceList.get(1);
-		
-		
-		String sub1 = null;
-		String sub2 = null;
-		
-		double best = -1;
-		int firstIdx = 0;
-		int secondIdx = 0;
-		
-		
-		//find best match between 1st and 2nd substring and construct a matrix
-		
-		for (int i = 0; i < first.length() - MOTIF_LENGTH; i++)
+		ArrayList<Integer> evaluateArray = new ArrayList<Integer>();
+		for(Integer obj : paramArray)
 		{
-			sub1 = first.substring(i, i+MOTIF_LENGTH);
-			for(int m = 0; m < second.length() - MOTIF_LENGTH; m++)
+		    evaluateArray.add(obj);
+		}
+		
+		int [][] table = new int [MOTIF_LENGTH][4];
+		int totalScore = 0;
+		
+
+		for (int i = 0; i < evaluateArray.size(); i++)
+		{
+			int startLocation = evaluateArray.get(i);
+
+			String myString = sequenceList.get(i).substring(startLocation, startLocation+MOTIF_LENGTH);
+
+			for(int j = 0; j <MOTIF_LENGTH;j++)
 			{
-				sub2 = second.substring(m, m+MOTIF_LENGTH);
-				
-				double potential = scorePWN(sub1, sub2);
-				
-				if(potential >= best)
+				if(myString.charAt(j) == 'A')
+					table[j][0]++;
+				else if(myString.charAt(j) == 'C')
+					table[j][1]++;
+				else if(myString.charAt(j) == 'G')
+					table[j][2]++;
+				else
+					table[j][3]++;
+
+			}
+			
+		}
+
+		
+
+		for (int i = 0; i < MOTIF_LENGTH; i++)
+		{
+			int max = -1;
+			int idx = 0;
+			int localTotal = 0;
+
+			for(int m = 0; m < 4; m++)
+			{
+				if(table[i][m] > max)
 				{
-					best = potential;
-					firstIdx = i;
-					secondIdx = m;
+					max = table[i][m];
+					idx = m;
 				}
 					
 			}
-		}		
-		
-		if(firstIdx > 0)
-			firstIdx -= 1;
-		
-		if(secondIdx > 0)
-			secondIdx -= 1;
-		
-		motifLocations.add(firstIdx);
-		motifLocations.add(secondIdx);
-		
-		
-			
-		for(int i = 2; i < sequenceList.size(); i++)
-		{
-			
-			String current = sequenceList.get(i);
-			
-			int local_idx = 0;
-			double best_score = -1;
-			
-			for (int m = 0; m < current.length()-MOTIF_LENGTH+1; m++)
+
+			for(int m = 0; m < 4; m++)
 			{
-				//add the current location of substring start to calculation matrix
-				motifLocations.add(m);
-				double currentScore = scoreAllOthers();
-				if (currentScore >= best_score)
-				{
-					best_score = currentScore;
-					local_idx = m;
-				}
-				
-				//remove from calculation matrix
-				motifLocations.remove(motifLocations.size()-1);
-						
+				if(m != idx)
+					localTotal += table[i][m];
 			}
 			
-			//add the ideal substring to calculation matrix
-			motifLocations.add(local_idx);
+			totalScore += localTotal;
 		}
+
+		return totalScore;
+	}
+	
+	public static void main(String[] args) throws IOException
+	{
+		formSequenceList(args[0]);
+		importLengthFromFile(args[1]);
 		
 		
 		/*
-		for (int m = 0; m < motifLocations.size(); m++)
-		{
-			int start = motifLocations.get(m);
-			String currentMotif = sequenceList.get(m).substring(start-1, start+MOTIF_LENGTH);
-			System.out.println(currentMotif);
-		}
+		 Take the 0-th index of each sequence and enter the motif.
 		*/
+		for(int i = 0; i < sequenceList.size(); i++)
+			bestMotifLocations.add(0);
+
+		//set baseline minimum score
+		int minScore = getHammingScore(bestMotifLocations);
+		int maxIndex = sequenceList.get(0).length()-MOTIF_LENGTH+1;
+		
+
+		for(int firstRowIdx = 0; firstRowIdx < maxIndex; firstRowIdx++)
+		{
+			//create a local working copy of an array-list of motifs
+			ArrayList<Integer> local = new ArrayList<Integer>();
+			local.add(firstRowIdx);
+			
+			/*
+			for each other sequence in list, select the substring that will minimize overall hamming distance score.
+			keep doing this to assemble an ArrayList of locations that will resemble the most likely locations of 
+			the motifs and have the best consensus
+			*/
+
+			for(int otherRows = 1; otherRows < sequenceList.size(); otherRows++)
+			{
+				int stepMin = Integer.MAX_VALUE;
+				int targetIdx = 0;
+				
+
+				for(int otherRowIdx = 0; otherRowIdx < maxIndex; otherRowIdx++)
+				{
+					
+					local.add(otherRowIdx);
+					
+					int scoreLocal = getHammingScore(local);
+					if(scoreLocal < stepMin)
+					{
+						stepMin = scoreLocal;
+						targetIdx = otherRowIdx;
+					}
+					
+					int lastIdx = local.size()-1;
+					local.remove(lastIdx);
+				}
+				
+				local.add(targetIdx);
+			}
+			/*
+			if score of your new list of best motif location is better and old score
+			replace the minScore variable you set with the new score
+			 and replace the bestMotifLocations list with your new list
+			*/
+			
+			int localScore = getHammingScore(local);
+			if (localScore < minScore)
+			{
+				minScore = localScore;
+				bestMotifLocations = local;
+			}
+		}
+		
+
+		
+		for(int i = 0; i < bestMotifLocations.size(); i++)
+		{
+			int location = bestMotifLocations.get(i)+1;
+			System.out.println("Location:  " + location);
+		}
+		
 		
 		writeOutSites();
 		writeOutMotif();
